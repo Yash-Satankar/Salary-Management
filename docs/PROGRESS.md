@@ -8,7 +8,7 @@ Resume rule: read this file and `git log --oneline` first, then continue from th
 - [x] Phase 3 — Database (Kysely client, schema types, migrations, integration harness)
 - [x] Phase 4 — Seed (salary model, deterministic 10k seed, determinism test)
 - [x] Phase 5 — API skeleton & auth
-- [ ] Phase 6 — Reference & employees
+- [x] Phase 6 — Reference & employees
 - [ ] Phase 7 — Insights
 - [ ] Phase 8 — CSV export & import
 - [ ] Phase 9 — Web foundation
