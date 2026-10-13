@@ -7,18 +7,27 @@ export class InvalidAmountError extends Error {
 
 const DECIMAL_PATTERN = /^(\d+)(?:\.(\d+))?$/;
 
+interface DecimalParts {
+  whole: string;
+  fraction: string;
+}
+
+/** Splits a plain non-negative decimal; signs, exponents and digit separators are rejected. */
+function parseDecimal(text: string, description: string): DecimalParts {
+  const match = DECIMAL_PATTERN.exec(text.trim());
+  if (!match) {
+    throw new InvalidAmountError(`"${text}" is not a valid ${description}`);
+  }
+  return { whole: match[1] ?? '', fraction: match[2] ?? '' };
+}
+
 /**
  * Converts a major-unit decimal string (e.g. "1250000.50") into integer minor units using exact
  * string arithmetic. `parseFloat` is never used because binary floats cannot represent most
  * decimal amounts exactly.
  */
 export function toMinor(major: string, minorUnit: number): number {
-  const match = DECIMAL_PATTERN.exec(major.trim());
-  if (!match) {
-    throw new InvalidAmountError(`"${major}" is not a valid non-negative amount`);
-  }
-  const whole = match[1] ?? '';
-  const fraction = match[2] ?? '';
+  const { whole, fraction } = parseDecimal(major, 'non-negative amount');
   if (fraction.length > minorUnit) {
     throw new InvalidAmountError(
       minorUnit === 0
@@ -70,14 +79,9 @@ export function formatMoney(money: Money, minorUnit: number, locale = 'en-US'): 
  * half up. Mirrors the SQL `salary_minor / 10^minor_unit * usd_per_unit * 100` so API and UI agree.
  */
 export function toUsdMinor(amountMinor: number, minorUnit: number, usdPerUnit: string): number {
-  const match = DECIMAL_PATTERN.exec(usdPerUnit.trim());
-  if (!match) {
-    throw new InvalidAmountError(`"${usdPerUnit}" is not a valid exchange rate`);
-  }
-  const rateFraction = match[2] ?? '';
-  const rate = BigInt((match[1] ?? '') + rateFraction);
-  const numerator = BigInt(amountMinor) * rate * 100n;
-  const denominator = 10n ** BigInt(minorUnit + rateFraction.length);
+  const rate = parseDecimal(usdPerUnit, 'exchange rate');
+  const numerator = BigInt(amountMinor) * BigInt(rate.whole + rate.fraction) * 100n;
+  const denominator = 10n ** BigInt(minorUnit + rate.fraction.length);
   return Number(divideRoundingHalfUp(numerator, denominator));
 }
 
