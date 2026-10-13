@@ -22,6 +22,7 @@ export type SortOrder = (typeof SORT_ORDERS)[number];
 export const ERROR_CODES = [
   'VALIDATION_ERROR',
   'UNAUTHENTICATED',
+  'FORBIDDEN',
   'NOT_FOUND',
   'CONFLICT',
   'UNPROCESSABLE',
