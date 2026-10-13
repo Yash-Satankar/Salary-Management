@@ -5,6 +5,7 @@ import {
   type EmployeeListQuery,
   type EmployeeListMeta,
   type EmployeeUpdateInput,
+  type TerminateEmployeeInput,
   type FxMeta,
   toUsdMinor,
 } from '@acme/shared';
@@ -23,6 +24,7 @@ export interface EmployeeService {
   getDetail(id: number): Promise<EmployeeDetail>;
   create(input: EmployeeCreateInput): Promise<EmployeeDetail>;
   update(id: number, input: EmployeeUpdateInput): Promise<EmployeeDetail>;
+  terminate(id: number, input: TerminateEmployeeInput): Promise<EmployeeDetail>;
   fxMeta(): Promise<FxMeta>;
 }
 
@@ -224,6 +226,20 @@ export function createEmployeeService({
             });
           }
         }),
+      );
+      return getDetail(id);
+    },
+
+    async terminate(id, { terminatedOn }) {
+      const existing = await requireActiveEmployee(id);
+      if (terminatedOn < existing.hireDate) {
+        throw fieldError('terminatedOn', 'Termination date cannot be before the hire date');
+      }
+      if (terminatedOn > clock.today()) {
+        throw fieldError('terminatedOn', 'Termination date cannot be in the future');
+      }
+      await transaction((repository) =>
+        repository.update(id, { status: 'terminated', terminatedOn }),
       );
       return getDetail(id);
     },
