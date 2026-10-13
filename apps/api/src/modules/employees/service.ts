@@ -178,6 +178,13 @@ export function createEmployeeService({
         await requireJobTitle(changes.jobTitleId);
       }
       const country = await requireCountry(changes.countryCode ?? existing.countryCode);
+      // A new country means a new currency, so the old amount would silently change meaning.
+      if (country.code !== existing.countryCode && changes.salaryMinor === undefined) {
+        throw fieldError(
+          'salaryMinor',
+          `Changing the country changes the currency: enter the salary in ${country.currency.code}`,
+        );
+      }
       const salaryMinor = changes.salaryMinor ?? existing.salaryMinor;
       const currencyCode = country.currency.code;
       const salaryChanged =
