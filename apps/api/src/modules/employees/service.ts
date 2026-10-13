@@ -74,6 +74,15 @@ export function createEmployeeService({
     return employee;
   }
 
+  /** Terminated records are kept for history and audit, never edited. */
+  async function requireActiveEmployee(id: number): Promise<EmployeeRecord> {
+    const employee = await requireEmployee(id);
+    if (employee.status === 'terminated') {
+      throw conflict('Terminated employees cannot be edited');
+    }
+    return employee;
+  }
+
   async function requireCountry(code: string): Promise<CountryInfo> {
     const country = await referenceRepository.findCountry(code);
     if (!country) {
@@ -172,7 +181,7 @@ export function createEmployeeService({
     },
 
     async update(id, input) {
-      const existing = await requireEmployee(id);
+      const existing = await requireActiveEmployee(id);
       const { salaryChange, ...changes } = input;
       if (changes.jobTitleId !== undefined) {
         await requireJobTitle(changes.jobTitleId);
