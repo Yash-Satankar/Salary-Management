@@ -1,10 +1,11 @@
-import type {
-  EmployeeCreateInput,
-  EmployeeDetail,
-  EmployeeListItem,
-  EmployeeListQuery,
-  EmployeeListMeta,
-  FxMeta,
+import {
+  type EmployeeCreateInput,
+  type EmployeeDetail,
+  type EmployeeListItem,
+  type EmployeeListQuery,
+  type EmployeeListMeta,
+  type FxMeta,
+  toUsdMinor,
 } from '@acme/shared';
 import type { Clock } from '../../lib/clock';
 import { notFound, unprocessable } from '../../lib/errors';
@@ -24,6 +25,8 @@ export interface EmployeeServiceDeps {
   clock: Clock;
   transaction: EmployeeTransaction;
 }
+
+export const MAX_SALARY_USD_MINOR = 5_000_000_00;
 
 /** Field-level domain error in the same shape as Zod's flattened errors, so forms can map it. */
 export function fieldError(field: string, message: string) {
@@ -49,6 +52,14 @@ export function createEmployeeService({
       throw fieldError('jobTitleId', 'Unknown job title');
     }
     return jobTitle;
+  }
+
+  /** Bounds apply to the USD equivalent so one limit is meaningful across all currencies. */
+  function assertSalaryWithinBounds(salaryMinor: number, country: CountryInfo): void {
+    const usdMinor = toUsdMinor(salaryMinor, country.currency.minorUnit, country.usdPerUnit);
+    if (usdMinor > MAX_SALARY_USD_MINOR) {
+      throw fieldError('salaryMinor', 'Salary must not exceed the equivalent of 5,000,000 USD');
+    }
   }
 
   async function getDetail(id: number): Promise<EmployeeDetail> {
@@ -82,6 +93,7 @@ export function createEmployeeService({
     async create(input) {
       const country = await requireCountry(input.countryCode);
       await requireJobTitle(input.jobTitleId);
+      assertSalaryWithinBounds(input.salaryMinor, country);
       const created = await transaction((repository) =>
         repository.insert({ ...input, currencyCode: country.currency.code }),
       );
