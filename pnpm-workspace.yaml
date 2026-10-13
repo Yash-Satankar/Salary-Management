@@ -8,4 +8,6 @@ onlyBuiltDependencies:
 ignoredBuiltDependencies:
   - cpu-features
   - protobufjs
+  - sharp
   - ssh2
+  - unrs-resolver
