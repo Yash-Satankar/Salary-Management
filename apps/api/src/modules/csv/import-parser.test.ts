@@ -46,7 +46,7 @@ describe('parseImportFile', () => {
   });
 
   it('accepts a UTF-8 BOM, CRLF line endings and loosely formatted headers', () => {
-    const text = `﻿${HEADER.toUpperCase().replace('full_name', ' Full_Name ')}\r\n${validLine}\r\n`;
+    const text = `\uFEFF${HEADER.toUpperCase().replace('full_name', ' Full_Name ')}\r\n${validLine}\r\n`;
     const parsed = parseImportFile(text);
     expect(parsed.rows[0]?.values.full_name).toBe('Asha Rao');
   });
