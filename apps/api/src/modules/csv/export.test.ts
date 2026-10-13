@@ -1,5 +1,5 @@
 import type { EmployeeListItem } from '@acme/shared';
-import { text } from 'node:stream/consumers';
+import { buffer } from 'node:stream/consumers';
 import { describe, expect, it } from 'vitest';
 import { createExportStream, EXPORT_COLUMNS, exportFilename, toExportRecord } from './export';
 import { escapeFormula } from './formula-escape';
@@ -95,10 +95,12 @@ describe('toExportRecord', () => {
 });
 
 describe('createExportStream', () => {
-  it('streams a header row and properly quoted CSV rows', async () => {
-    const csv = await text(
+  it('streams a BOM, a header row and properly quoted CSV rows', async () => {
+    const bytes = await buffer(
       createExportStream(items(asha, { ...asha, id: 2, fullName: 'Rao, Asha "AR"' }), MINOR_UNITS),
     );
+    expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+    const csv = bytes.subarray(3).toString('utf8');
     const lines = csv.trimEnd().split('\n');
     expect(lines[0]).toBe(EXPORT_COLUMNS.join(','));
     expect(lines[1]).toBe(
