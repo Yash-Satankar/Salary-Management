@@ -1,0 +1,4 @@
+employee_code,full_name,email,department,job_title,country_code,currency,salary,employment_type,hire_date
+,Priya Sharma,priya.sharma@acme.test,Engineering,Software Engineer,IN,INR,1850000.00,full_time,2026-11-03
+,Kenji Watanabe,kenji.watanabe@acme.test,Sales,Account Executive,JP,JPY,7200000,full_time,2026-10-20
+,Emma Clarke,emma.clarke@acme.test,People,Recruiter,GB,GBP,52000.00,part_time,2026-11-17
