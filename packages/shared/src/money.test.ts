@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { InvalidAmountError, toMajorString, toMinor } from './money';
+import { formatMoney, InvalidAmountError, toMajorString, toMinor, toUsdMinor } from './money';
 
 describe('toMinor', () => {
   it('converts a two-decimal amount to minor units exactly', () => {
@@ -88,5 +88,66 @@ describe('toMajorString', () => {
 
   it('rejects non-integer minor amounts', () => {
     expect(() => toMajorString(10.5, 2)).toThrow(InvalidAmountError);
+  });
+});
+
+// Intl output uses non-breaking spaces in some locales; normalise them so expectations stay readable.
+const plain = (text: string) => text.replace(/\u00a0|\u202f/g, ' ');
+
+describe('formatMoney', () => {
+  it('formats INR with Indian digit grouping and two decimals', () => {
+    expect(formatMoney({ amountMinor: 125000050, currency: 'INR' }, 2, 'en-IN')).toBe(
+      '₹12,50,000.50',
+    );
+  });
+
+  it('formats JPY without decimals', () => {
+    expect(formatMoney({ amountMinor: 8500000, currency: 'JPY' }, 0, 'en-US')).toBe('¥8,500,000');
+  });
+
+  it('respects the locale conventions', () => {
+    expect(plain(formatMoney({ amountMinor: 123450, currency: 'EUR' }, 2, 'de-DE'))).toBe(
+      '1.234,50 €',
+    );
+  });
+
+  it('formats amounts beyond float precision exactly', () => {
+    expect(formatMoney({ amountMinor: 9007199254740991, currency: 'USD' }, 2, 'en-US')).toBe(
+      '$90,071,992,547,409.91',
+    );
+  });
+
+  it('defaults to en-US', () => {
+    expect(formatMoney({ amountMinor: 4200, currency: 'USD' }, 2)).toBe('$42.00');
+  });
+});
+
+describe('toUsdMinor', () => {
+  it('leaves USD unchanged', () => {
+    expect(toUsdMinor(123456, 2, '1')).toBe(123456);
+  });
+
+  it('converts EUR minor units to US cents', () => {
+    // 1,000.00 EUR × 1.10 = 1,100.00 USD
+    expect(toUsdMinor(100000, 2, '1.10')).toBe(110000);
+  });
+
+  it('accounts for the zero-decimal JPY exponent', () => {
+    // ¥8,500,000 × 0.0067 = $56,950.00
+    expect(toUsdMinor(8500000, 0, '0.0067')).toBe(5695000);
+  });
+
+  it('rounds half-cents up, exactly', () => {
+    // ₹1,250,000.50 × 0.0115 = $14,375.00575 → 1,437,500.575 cents → 1,437,501
+    expect(toUsdMinor(125000050, 2, '0.0115')).toBe(1437501);
+  });
+
+  it('rounds below half a cent down', () => {
+    // ₹1.00 × 0.0115 = 1.15 cents → 1
+    expect(toUsdMinor(100, 2, '0.0115')).toBe(1);
+  });
+
+  it('rejects a malformed rate', () => {
+    expect(() => toUsdMinor(100, 2, '1.1.0')).toThrow(InvalidAmountError);
   });
 });
