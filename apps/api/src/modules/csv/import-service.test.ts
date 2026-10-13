@@ -30,7 +30,6 @@ function setup() {
     hireDate: '2019-06-15',
   });
   repository.seed({
-    fullName: 'Gone Person',
     email: 'gone@acme.test',
     status: 'terminated',
     terminatedOn: '2025-01-01',
@@ -89,7 +88,7 @@ describe('import service: database-level row errors', () => {
     const result = await service.run(
       csv(
         unchangedAsha.replace('EMP-000001', 'EMP-999999'),
-        'EMP-000003,Gone Person,gone@acme.test,,Software Engineer,IN,INR,1.00,full_time,2022-01-10',
+        'EMP-000003,Seeded Person,gone@acme.test,,Software Engineer,IN,INR,1.00,full_time,2022-01-10',
         newHire.replace('chika.tanaka@', 'ben.carter@'),
       ),
       { dryRun: true },
@@ -99,6 +98,17 @@ describe('import service: database-level row errors', () => {
       { row: 3, field: 'employee_code', message: 'Terminated employees cannot be updated' },
       { row: 4, field: 'email', message: 'Email already belongs to EMP-000002' },
     ]);
+  });
+
+  it('accepts an unchanged terminated employee, so an export of all statuses re-imports cleanly', async () => {
+    const { service } = setup();
+    const result = await service.run(
+      csv(
+        'EMP-000003,Seeded Person,gone@acme.test,,Software Engineer,IN,INR,2500000.00,full_time,2022-01-10',
+      ),
+      { dryRun: true },
+    );
+    expect(result).toMatchObject({ unchanged: 1, toUpdate: 0, errors: [] });
   });
 
   it('combines parser errors and database errors, ordered by row', async () => {
