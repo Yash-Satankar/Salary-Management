@@ -72,13 +72,18 @@ export class InMemoryEmployeeRepository implements EmployeeRepository {
   }
 
   async findByEmail(email: string) {
+    return this.emailOwner(email);
+  }
+
+  /** Mirrors the unique index; independent of findByEmail so tests can simulate races. */
+  private emailOwner(email: string): EmployeeRecord | undefined {
     return this.state.employees.find(
       (employee) => employee.email.toLowerCase() === email.toLowerCase(),
     );
   }
 
   async insert(employee: Parameters<EmployeeRepository['insert']>[0]) {
-    if (await this.findByEmail(employee.email)) {
+    if (this.emailOwner(employee.email)) {
       throw new DuplicateEmailError(employee.email);
     }
     return this.seed({ ...employee, status: 'active', terminatedOn: null });
@@ -89,7 +94,7 @@ export class InMemoryEmployeeRepository implements EmployeeRepository {
     if (!existing) {
       throw new Error(`No employee ${id}`);
     }
-    const duplicate = changes.email ? await this.findByEmail(changes.email) : undefined;
+    const duplicate = changes.email ? this.emailOwner(changes.email) : undefined;
     if (duplicate && duplicate.id !== id) {
       throw new DuplicateEmailError(changes.email ?? '');
     }

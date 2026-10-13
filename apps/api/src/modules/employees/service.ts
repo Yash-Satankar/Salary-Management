@@ -8,9 +8,9 @@ import {
   toUsdMinor,
 } from '@acme/shared';
 import type { Clock } from '../../lib/clock';
-import { notFound, unprocessable } from '../../lib/errors';
+import { conflict, notFound, unprocessable } from '../../lib/errors';
 import type { CountryInfo, JobTitleInfo, ReferenceRepository } from '../reference/repository';
-import type { EmployeeRepository, EmployeeTransaction } from './types';
+import { DuplicateEmailError, type EmployeeRepository, type EmployeeTransaction } from './types';
 
 export interface EmployeeService {
   list(query: EmployeeListQuery): Promise<{ items: EmployeeListItem[]; meta: EmployeeListMeta }>;
@@ -33,6 +33,24 @@ export function fieldError(field: string, message: string) {
   return unprocessable(message, { formErrors: [], fieldErrors: { [field]: [message] } });
 }
 
+const DUPLICATE_EMAIL_MESSAGE = 'An employee with this email already exists';
+
+function duplicateEmail() {
+  return conflict(DUPLICATE_EMAIL_MESSAGE, {
+    formErrors: [],
+    fieldErrors: { email: [DUPLICATE_EMAIL_MESSAGE] },
+  });
+}
+
+/** The unique index is the final arbiter; this turns a lost race into the same 409. */
+async function mapDuplicateEmail<T>(work: Promise<T>): Promise<T> {
+  try {
+    return await work;
+  } catch (error) {
+    throw error instanceof DuplicateEmailError ? duplicateEmail() : error;
+  }
+}
+
 export function createEmployeeService({
   employeeRepository,
   referenceRepository,
@@ -52,6 +70,13 @@ export function createEmployeeService({
       throw fieldError('jobTitleId', 'Unknown job title');
     }
     return jobTitle;
+  }
+
+  async function assertEmailAvailable(email: string, ownerId?: number): Promise<void> {
+    const existing = await employeeRepository.findByEmail(email);
+    if (existing && existing.id !== ownerId) {
+      throw duplicateEmail();
+    }
   }
 
   /** Bounds apply to the USD equivalent so one limit is meaningful across all currencies. */
@@ -94,8 +119,11 @@ export function createEmployeeService({
       const country = await requireCountry(input.countryCode);
       await requireJobTitle(input.jobTitleId);
       assertSalaryWithinBounds(input.salaryMinor, country);
-      const created = await transaction((repository) =>
-        repository.insert({ ...input, currencyCode: country.currency.code }),
+      await assertEmailAvailable(input.email);
+      const created = await mapDuplicateEmail(
+        transaction((repository) =>
+          repository.insert({ ...input, currencyCode: country.currency.code }),
+        ),
       );
       return getDetail(created.id);
     },
