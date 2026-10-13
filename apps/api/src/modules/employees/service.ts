@@ -7,12 +7,17 @@ import {
   type EmployeeUpdateInput,
   type TerminateEmployeeInput,
   type FxMeta,
-  toUsdMinor,
 } from '@acme/shared';
 import type { Clock } from '../../lib/clock';
-import { addDays } from '../../lib/dates';
 import { conflict, notFound, unprocessable } from '../../lib/errors';
 import type { CountryInfo, JobTitleInfo, ReferenceRepository } from '../reference/repository';
+import {
+  exceedsSalaryLimit,
+  HIRE_DATE_LIMIT_MESSAGE,
+  INITIAL_SALARY_REASON,
+  isHireDateTooFarAhead,
+  SALARY_LIMIT_MESSAGE,
+} from './rules';
 import {
   DuplicateEmailError,
   type EmployeeRecord,
@@ -36,16 +41,10 @@ export interface EmployeeServiceDeps {
   transaction: EmployeeTransaction;
 }
 
-export const MAX_SALARY_USD_MINOR = 5_000_000_00;
-/** Accepted offers can be entered up to this many days before the start date. */
-export const MAX_DAYS_UNTIL_HIRE = 90;
-
 /** Field-level domain error in the same shape as Zod's flattened errors, so forms can map it. */
 export function fieldError(field: string, message: string) {
   return unprocessable(message, { formErrors: [], fieldErrors: { [field]: [message] } });
 }
-
-export const INITIAL_SALARY_REASON = 'Initial salary';
 
 const DUPLICATE_EMAIL_MESSAGE = 'An employee with this email already exists';
 
@@ -111,20 +110,15 @@ export function createEmployeeService({
     }
   }
 
-  /** Bounds apply to the USD equivalent so one limit is meaningful across all currencies. */
   function assertSalaryWithinBounds(salaryMinor: number, country: CountryInfo): void {
-    const usdMinor = toUsdMinor(salaryMinor, country.currency.minorUnit, country.usdPerUnit);
-    if (usdMinor > MAX_SALARY_USD_MINOR) {
-      throw fieldError('salaryMinor', 'Salary must not exceed the equivalent of 5,000,000 USD');
+    if (exceedsSalaryLimit(salaryMinor, country.currency.minorUnit, country.usdPerUnit)) {
+      throw fieldError('salaryMinor', SALARY_LIMIT_MESSAGE);
     }
   }
 
   function assertHireDateAllowed(hireDate: string): void {
-    if (hireDate > addDays(clock.today(), MAX_DAYS_UNTIL_HIRE)) {
-      throw fieldError(
-        'hireDate',
-        `Hire date cannot be more than ${MAX_DAYS_UNTIL_HIRE} days ahead`,
-      );
+    if (isHireDateTooFarAhead(hireDate, clock.today())) {
+      throw fieldError('hireDate', HIRE_DATE_LIMIT_MESSAGE);
     }
   }
 
