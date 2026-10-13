@@ -137,6 +137,16 @@ export function createEmployeeRepository(db: Db): EmployeeRepository {
       return eb.and(conditions);
     });
 
+  /** One sorted page; `id` breaks ties so rows never jump between pages. */
+  const sortedPage = (query: EmployeeListQuery, limit: number, offset: number) =>
+    filtered(query)
+      .select(LIST_COLUMNS)
+      .orderBy(SORT_EXPRESSIONS[query.sort], query.order)
+      .orderBy('e.id', query.order)
+      .limit(limit)
+      .offset(offset)
+      .execute();
+
   type ListRow = Awaited<ReturnType<typeof listRowById>>;
   const listRowById = (id: number) =>
     joined().select(LIST_COLUMNS).where('e.id', '=', id).executeTakeFirst();
@@ -256,14 +266,7 @@ export function createEmployeeRepository(db: Db): EmployeeRepository {
 
     async list(query) {
       const [rows, count] = await Promise.all([
-        filtered(query)
-          .select(LIST_COLUMNS)
-          .orderBy(SORT_EXPRESSIONS[query.sort], query.order)
-          // id breaks ties so rows never jump between pages.
-          .orderBy('e.id', query.order)
-          .limit(query.pageSize)
-          .offset((query.page - 1) * query.pageSize)
-          .execute(),
+        sortedPage(query, query.pageSize, (query.page - 1) * query.pageSize),
         filtered(query)
           .select((eb) => eb.fn.countAll<number>().as('total'))
           .executeTakeFirstOrThrow(),
@@ -296,13 +299,7 @@ export function createEmployeeRepository(db: Db): EmployeeRepository {
 
     async *iterate(query, pageSize = EXPORT_PAGE_SIZE) {
       for (let page = 1; ; page += 1) {
-        const rows = await filtered(query)
-          .select(LIST_COLUMNS)
-          .orderBy(SORT_EXPRESSIONS[query.sort], query.order)
-          .orderBy('e.id', query.order)
-          .limit(pageSize)
-          .offset((page - 1) * pageSize)
-          .execute();
+        const rows = await sortedPage(query, pageSize, (page - 1) * pageSize);
         yield* rows.map(toListItem);
         if (rows.length < pageSize) {
           return;
