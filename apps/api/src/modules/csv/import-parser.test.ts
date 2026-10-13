@@ -157,7 +157,7 @@ describe('validateImportRows', () => {
     ],
     [
       'salary',
-      validLine.replace('1250000.50', '12,50,000'),
+      validLine.replace('1250000.50', '"12,50,000"'),
       'Salary must be a plain number such as 1250000.50',
     ],
     ['salary', validLine.replace('1250000.50', '0'), 'Salary must be greater than zero'],
