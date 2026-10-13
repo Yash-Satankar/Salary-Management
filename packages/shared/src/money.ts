@@ -48,3 +48,41 @@ export function toMajorString(minor: number, minorUnit: number): string {
   const splitAt = digits.length - minorUnit;
   return `${sign}${digits.slice(0, splitAt)}.${digits.slice(splitAt)}`;
 }
+
+export interface Money {
+  amountMinor: number;
+  currency: string;
+}
+
+export function formatMoney(money: Money, minorUnit: number, locale = 'en-US'): string {
+  const formatter = new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: money.currency,
+    minimumFractionDigits: minorUnit,
+    maximumFractionDigits: minorUnit,
+  });
+  // Intl formats numeric strings as exact decimals, so large amounts never pass through a float.
+  return formatter.format(toMajorString(money.amountMinor, minorUnit) as `${number}`);
+}
+
+/**
+ * Converts local minor units to US cents with a decimal-string rate (USD per major unit), rounding
+ * half up. Mirrors the SQL `salary_minor / 10^minor_unit * usd_per_unit * 100` so API and UI agree.
+ */
+export function toUsdMinor(amountMinor: number, minorUnit: number, usdPerUnit: string): number {
+  const match = DECIMAL_PATTERN.exec(usdPerUnit.trim());
+  if (!match) {
+    throw new InvalidAmountError(`"${usdPerUnit}" is not a valid exchange rate`);
+  }
+  const rateFraction = match[2] ?? '';
+  const rate = BigInt((match[1] ?? '') + rateFraction);
+  const numerator = BigInt(amountMinor) * rate * 100n;
+  const denominator = 10n ** BigInt(minorUnit + rateFraction.length);
+  return Number(divideRoundingHalfUp(numerator, denominator));
+}
+
+function divideRoundingHalfUp(numerator: bigint, denominator: bigint): bigint {
+  const sign = numerator < 0n ? -1n : 1n;
+  const magnitude = numerator * sign;
+  return sign * ((magnitude * 2n + denominator) / (denominator * 2n));
+}
