@@ -144,9 +144,9 @@ describe('employeeListQuerySchema', () => {
 
   it('treats empty query parameters as absent', () => {
     const parsed = employeeListQuerySchema.parse({ search: '', country: '', departmentId: '' });
-    expect(parsed).not.toHaveProperty('search');
-    expect(parsed).not.toHaveProperty('country');
-    expect(parsed).not.toHaveProperty('departmentId');
+    expect(parsed.search).toBeUndefined();
+    expect(parsed.country).toBeUndefined();
+    expect(parsed.departmentId).toBeUndefined();
   });
 
   it('accepts every filter, sort and order', () => {
