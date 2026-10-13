@@ -1,0 +1,7 @@
+pnpm-lock.yaml
+**/dist
+**/.next
+**/coverage
+docs/REQUIREMENTS.md
+docs/SPEC.md
+docs/prompts
