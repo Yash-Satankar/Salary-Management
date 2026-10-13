@@ -11,6 +11,7 @@ import {
   type LocaleDefinition,
 } from '@faker-js/faker';
 import type { EmploymentType } from '@acme/shared';
+import { addDays, daysBetween } from '../../lib/dates';
 import { createRng, type Rng } from './random';
 import { generateSalaryMinor, randomNoiseBasisPoints, roundingStepFor } from './salary-model';
 
@@ -253,16 +254,6 @@ function distinctSortedOffsets(rng: Rng, count: number, span: number): number[] 
     offsets.add(rng.int(1, span));
   }
   return [...offsets].sort((a, b) => a - b);
-}
-
-const DAY_MS = 86_400_000;
-
-function addDays(isoDate: string, days: number): string {
-  return new Date(Date.parse(`${isoDate}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
-}
-
-function daysBetween(from: string, to: string): number {
-  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY_MS);
 }
 
 function slug(name: string): string {
