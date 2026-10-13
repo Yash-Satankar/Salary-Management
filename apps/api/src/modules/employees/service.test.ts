@@ -371,3 +371,22 @@ describe('employee service: terminate', () => {
     expect(error.code).toBe('NOT_FOUND');
   });
 });
+
+describe('employee service: hire date', () => {
+  // Today is 2026-10-13, so the latest allowed hire date (today + 90 days) is 2027-01-11.
+  it('accepts a hire date up to 90 days ahead for accepted offers', async () => {
+    const { service } = setup();
+    await expect(service.create({ ...newHire, hireDate: '2027-01-11' })).resolves.toBeDefined();
+  });
+
+  it('rejects a hire date more than 90 days ahead on create and update', async () => {
+    const { service } = setup();
+    const createError = await appErrorFrom(service.create({ ...newHire, hireDate: '2027-01-12' }));
+    expect(createError.code).toBe('UNPROCESSABLE');
+    expect(createError.details).toMatchObject({ fieldErrors: { hireDate: [expect.any(String)] } });
+
+    const { id } = await service.create(newHire);
+    const updateError = await appErrorFrom(service.update(id, { hireDate: '2027-01-12' }));
+    expect(updateError.details).toMatchObject({ fieldErrors: { hireDate: [expect.any(String)] } });
+  });
+});
