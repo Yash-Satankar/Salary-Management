@@ -5,12 +5,18 @@ import { createDatabase } from './db/client';
 import { systemClock } from './lib/clock';
 import { createLogger } from './lib/logger';
 import { createAuthService } from './modules/auth/service';
+import {
+  createEmployeeRepository,
+  createEmployeeTransaction,
+} from './modules/employees/repository';
+import { createEmployeeService } from './modules/employees/service';
 import { createReferenceRepository } from './modules/reference/repository';
 
 const env = loadEnv();
 const logger = createLogger(env.LOG_LEVEL);
 const db = createDatabase({ connectionString: env.DATABASE_URL });
 const clock = systemClock;
+const referenceRepository = createReferenceRepository(db);
 
 const app = createApp({
   config: { allowedOrigins: env.ALLOWED_ORIGINS, isProduction: env.NODE_ENV === 'production' },
@@ -25,7 +31,13 @@ const app = createApp({
     await sql`SELECT 1`.execute(db);
   },
   loginRateLimit: { windowMs: 60_000, limit: 5 },
-  referenceRepository: createReferenceRepository(db),
+  referenceRepository,
+  employeeService: createEmployeeService({
+    employeeRepository: createEmployeeRepository(db),
+    referenceRepository,
+    clock,
+    transaction: createEmployeeTransaction(db),
+  }),
 });
 
 const server = app.listen(env.PORT, () => {

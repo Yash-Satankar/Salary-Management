@@ -8,6 +8,8 @@ import { originCheck } from './middleware/origin-check';
 import { createAuthController } from './modules/auth/controller';
 import { type LoginRateLimit, protectedAuthRoutes, publicAuthRoutes } from './modules/auth/routes';
 import type { AuthService } from './modules/auth/service';
+import { employeeRoutes } from './modules/employees/routes';
+import type { EmployeeService } from './modules/employees/service';
 import { healthRoutes } from './modules/health/routes';
 import type { ReferenceRepository } from './modules/reference/repository';
 import { referenceRoutes } from './modules/reference/routes';
@@ -24,6 +26,7 @@ export interface AppDeps {
   checkDatabase: () => Promise<void>;
   loginRateLimit: LoginRateLimit;
   referenceRepository: ReferenceRepository;
+  employeeService: EmployeeService;
 }
 
 /** Pure wiring: no listen(), no env access, so tests can build the app with fakes. */
@@ -46,6 +49,7 @@ export function createApp(deps: AppDeps): Express {
   api.use(requireSession(deps.authService));
   api.use(protectedAuthRoutes(authController));
   api.use(referenceRoutes(deps.referenceRepository));
+  api.use(employeeRoutes(deps.employeeService));
   api.use(notFoundHandler);
   app.use('/api/v1', api);
 
