@@ -153,3 +153,12 @@ describe('response schemas', () => {
     ).toBe(true);
   });
 });
+
+describe('error codes', () => {
+  it('include FORBIDDEN for cross-origin mutation attempts', () => {
+    expect(
+      errorEnvelopeSchema.safeParse({ error: { code: 'FORBIDDEN', message: 'Origin not allowed' } })
+        .success,
+    ).toBe(true);
+  });
+});
