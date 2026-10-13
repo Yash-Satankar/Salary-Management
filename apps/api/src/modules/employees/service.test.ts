@@ -76,3 +76,54 @@ describe('employee service: create', () => {
     });
   });
 });
+
+describe('employee service: salary bounds', () => {
+  it('accepts a salary worth exactly 5,000,000 USD', async () => {
+    const { service } = setup();
+    const created = await service.create({
+      ...newHire,
+      countryCode: 'US',
+      salaryMinor: 500_000_000,
+    });
+    expect(created.salaryUsd).toEqual({ amountMinor: 500_000_000, currency: 'USD' });
+  });
+
+  it('rejects a salary worth more than 5,000,000 USD', async () => {
+    const { service, repository } = setup();
+    const error = await appErrorFrom(
+      service.create({ ...newHire, countryCode: 'US', salaryMinor: 500_000_001 }),
+    );
+    expect(error.code).toBe('UNPROCESSABLE');
+    expect(error.details).toEqual({
+      formErrors: [],
+      fieldErrors: { salaryMinor: ['Salary must not exceed the equivalent of 5,000,000 USD'] },
+    });
+    expect(repository.employees).toHaveLength(0);
+  });
+
+  it('applies the limit to the USD equivalent of local currencies, including JPY', async () => {
+    const { service } = setup();
+    // ¥746,268,000 × 0.0067 ≈ $4,999,995.60 → allowed
+    await expect(
+      service.create({ ...newHire, countryCode: 'JP', salaryMinor: 746_268_000 }),
+    ).resolves.toBeDefined();
+    // ¥746,300,000 × 0.0067 ≈ $5,000,210 → rejected
+    const error = await appErrorFrom(
+      service.create({
+        ...newHire,
+        email: 'other@acme.test',
+        countryCode: 'JP',
+        salaryMinor: 746_300_000,
+      }),
+    );
+    expect(error.code).toBe('UNPROCESSABLE');
+  });
+
+  it('allows INR salaries that are large in local units but within the USD limit', async () => {
+    const { service } = setup();
+    // ₹40,00,00,000.00 × 0.0115 = $4,600,000
+    await expect(
+      service.create({ ...newHire, countryCode: 'IN', salaryMinor: 40_000_000_000 }),
+    ).resolves.toBeDefined();
+  });
+});
