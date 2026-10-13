@@ -127,3 +127,26 @@ describe('employee service: salary bounds', () => {
     ).resolves.toBeDefined();
   });
 });
+
+describe('employee service: unique email', () => {
+  it('rejects a duplicate email regardless of case with 409', async () => {
+    const { service, repository } = setup();
+    repository.seed({ email: 'asha.rao@acme.test' });
+    const error = await appErrorFrom(service.create({ ...newHire, email: 'asha.rao@acme.test' }));
+    expect(error.code).toBe('CONFLICT');
+    expect(error.details).toEqual({
+      formErrors: [],
+      fieldErrors: { email: ['An employee with this email already exists'] },
+    });
+    expect(repository.employees).toHaveLength(1);
+  });
+
+  it('maps a unique-index violation from a concurrent insert to 409', async () => {
+    const { service, repository } = setup();
+    repository.seed({ email: 'asha.rao@acme.test' });
+    // Simulates another request inserting the same email between the check and the insert.
+    repository.findByEmail = async () => undefined;
+    const error = await appErrorFrom(service.create(newHire));
+    expect(error.code).toBe('CONFLICT');
+  });
+});
