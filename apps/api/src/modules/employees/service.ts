@@ -4,18 +4,25 @@ import {
   type EmployeeListItem,
   type EmployeeListQuery,
   type EmployeeListMeta,
+  type EmployeeUpdateInput,
   type FxMeta,
   toUsdMinor,
 } from '@acme/shared';
 import type { Clock } from '../../lib/clock';
 import { conflict, notFound, unprocessable } from '../../lib/errors';
 import type { CountryInfo, JobTitleInfo, ReferenceRepository } from '../reference/repository';
-import { DuplicateEmailError, type EmployeeRepository, type EmployeeTransaction } from './types';
+import {
+  DuplicateEmailError,
+  type EmployeeRecord,
+  type EmployeeRepository,
+  type EmployeeTransaction,
+} from './types';
 
 export interface EmployeeService {
   list(query: EmployeeListQuery): Promise<{ items: EmployeeListItem[]; meta: EmployeeListMeta }>;
   getDetail(id: number): Promise<EmployeeDetail>;
   create(input: EmployeeCreateInput): Promise<EmployeeDetail>;
+  update(id: number, input: EmployeeUpdateInput): Promise<EmployeeDetail>;
   fxMeta(): Promise<FxMeta>;
 }
 
@@ -56,8 +63,17 @@ async function mapDuplicateEmail<T>(work: Promise<T>): Promise<T> {
 export function createEmployeeService({
   employeeRepository,
   referenceRepository,
+  clock,
   transaction,
 }: EmployeeServiceDeps): EmployeeService {
+  async function requireEmployee(id: number): Promise<EmployeeRecord> {
+    const employee = await employeeRepository.findById(id);
+    if (!employee) {
+      throw notFound(`Employee ${id} not found`);
+    }
+    return employee;
+  }
+
   async function requireCountry(code: string): Promise<CountryInfo> {
     const country = await referenceRepository.findCountry(code);
     if (!country) {
@@ -87,6 +103,18 @@ export function createEmployeeService({
     if (usdMinor > MAX_SALARY_USD_MINOR) {
       throw fieldError('salaryMinor', 'Salary must not exceed the equivalent of 5,000,000 USD');
     }
+  }
+
+  /** Salary changes cannot predate the employment or be scheduled for the future in v1. */
+  function resolveEffectiveDate(requested: string | undefined, hireDate: string): string {
+    const effectiveDate = requested ?? clock.today();
+    if (effectiveDate < hireDate) {
+      throw fieldError('effectiveDate', 'Effective date cannot be before the hire date');
+    }
+    if (effectiveDate > clock.today()) {
+      throw fieldError('effectiveDate', 'Effective date cannot be in the future');
+    }
+    return effectiveDate;
   }
 
   async function getDetail(id: number): Promise<EmployeeDetail> {
@@ -141,6 +169,47 @@ export function createEmployeeService({
         }),
       );
       return getDetail(created.id);
+    },
+
+    async update(id, input) {
+      const existing = await requireEmployee(id);
+      const { salaryChange, ...changes } = input;
+      if (changes.jobTitleId !== undefined) {
+        await requireJobTitle(changes.jobTitleId);
+      }
+      const country = await requireCountry(changes.countryCode ?? existing.countryCode);
+      const salaryMinor = changes.salaryMinor ?? existing.salaryMinor;
+      const currencyCode = country.currency.code;
+      const salaryChanged =
+        salaryMinor !== existing.salaryMinor || currencyCode !== existing.currencyCode;
+      const hireDate = changes.hireDate ?? existing.hireDate;
+      const effectiveDate = salaryChanged
+        ? resolveEffectiveDate(salaryChange?.effectiveDate, hireDate)
+        : undefined;
+      if (salaryChanged) {
+        assertSalaryWithinBounds(salaryMinor, country);
+      }
+      if (changes.email !== undefined) {
+        await assertEmailAvailable(changes.email, id);
+      }
+
+      await mapDuplicateEmail(
+        transaction(async (repository) => {
+          await repository.update(id, { ...changes, currencyCode });
+          if (effectiveDate !== undefined) {
+            await repository.insertSalaryChange({
+              employeeId: id,
+              previousSalaryMinor: existing.salaryMinor,
+              previousCurrencyCode: existing.currencyCode,
+              newSalaryMinor: salaryMinor,
+              newCurrencyCode: currencyCode,
+              effectiveDate,
+              reason: salaryChange?.reason || null,
+            });
+          }
+        }),
+      );
+      return getDetail(id);
     },
 
     fxMeta: () => referenceRepository.getFxMeta(),

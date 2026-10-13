@@ -64,15 +64,18 @@ export class InMemoryEmployeeRepository implements EmployeeRepository {
       ...record,
     };
     this.state.employees.push(employee);
-    return employee;
+    return { ...employee };
   }
 
+  // Copies, like rows from a real database, so callers never alias stored state.
   async findById(id: number) {
-    return this.state.employees.find((employee) => employee.id === id);
+    const employee = this.state.employees.find((candidate) => candidate.id === id);
+    return employee && { ...employee };
   }
 
   async findByEmail(email: string) {
-    return this.emailOwner(email);
+    const employee = this.emailOwner(email);
+    return employee && { ...employee };
   }
 
   /** Mirrors the unique index; independent of findByEmail so tests can simulate races. */
@@ -90,7 +93,7 @@ export class InMemoryEmployeeRepository implements EmployeeRepository {
   }
 
   async update(id: number, changes: Parameters<EmployeeRepository['update']>[1]) {
-    const existing = await this.findById(id);
+    const existing = this.state.employees.find((employee) => employee.id === id);
     if (!existing) {
       throw new Error(`No employee ${id}`);
     }
@@ -99,7 +102,7 @@ export class InMemoryEmployeeRepository implements EmployeeRepository {
       throw new DuplicateEmailError(changes.email ?? '');
     }
     Object.assign(existing, changes);
-    return existing;
+    return { ...existing };
   }
 
   async insertSalaryChange(change: NewSalaryChange) {
