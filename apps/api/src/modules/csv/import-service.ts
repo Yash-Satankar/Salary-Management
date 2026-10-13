@@ -94,7 +94,7 @@ export function createImportService({
         });
         continue;
       }
-      if (existing?.status === 'terminated') {
+      if (existing?.status === 'terminated' && differs(row, existing)) {
         errors.push({
           row: row.line,
           field: 'employee_code',
