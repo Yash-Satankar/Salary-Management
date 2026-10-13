@@ -180,3 +180,93 @@ describe('employee service: initial salary history', () => {
     expect(repository.employees).toHaveLength(0);
   });
 });
+
+describe('employee service: update and salary history', () => {
+  async function withEmployee() {
+    const context = setup();
+    const created = await context.service.create(newHire);
+    return { ...context, id: created.id };
+  }
+
+  it('records a salary change effective today by default', async () => {
+    const { service, repository, id } = await withEmployee();
+    const updated = await service.update(id, { salaryMinor: 275_000_000 });
+    expect(updated.salary).toEqual({ amountMinor: 275_000_000, currency: 'INR' });
+    expect(repository.salaryChanges.at(-1)).toMatchObject({
+      employeeId: id,
+      previousSalaryMinor: 250_000_000,
+      previousCurrencyCode: 'INR',
+      newSalaryMinor: 275_000_000,
+      newCurrencyCode: 'INR',
+      effectiveDate: TODAY,
+      reason: null,
+    });
+  });
+
+  it('uses the given effective date and reason', async () => {
+    const { service, repository, id } = await withEmployee();
+    await service.update(id, {
+      salaryMinor: 275_000_000,
+      salaryChange: { effectiveDate: '2026-07-01', reason: 'Annual review' },
+    });
+    expect(repository.salaryChanges.at(-1)).toMatchObject({
+      effectiveDate: '2026-07-01',
+      reason: 'Annual review',
+    });
+  });
+
+  it('writes no history row when the salary is unchanged', async () => {
+    const { service, repository, id } = await withEmployee();
+    const updated = await service.update(id, { salaryMinor: 250_000_000, fullName: 'Asha R. Rao' });
+    expect(updated.fullName).toBe('Asha R. Rao');
+    expect(repository.salaryChanges).toHaveLength(1);
+  });
+
+  it('updates non-salary fields without touching history', async () => {
+    const { service, repository, id } = await withEmployee();
+    const updated = await service.update(id, {
+      jobTitleId: JOB_TITLES.manager.id,
+      employmentType: 'part_time',
+    });
+    expect(updated.jobTitle.name).toBe('Engineering Manager');
+    expect(updated.employmentType).toBe('part_time');
+    expect(repository.salaryChanges).toHaveLength(1);
+  });
+
+  it('rejects a salary change effective before the hire date or in the future', async () => {
+    const { service, id } = await withEmployee();
+    for (const effectiveDate of ['2024-03-31', '2026-10-14']) {
+      const error = await appErrorFrom(
+        service.update(id, { salaryMinor: 275_000_000, salaryChange: { effectiveDate } }),
+      );
+      expect(error.code).toBe('UNPROCESSABLE');
+      expect(error.details).toMatchObject({ fieldErrors: { effectiveDate: [expect.any(String)] } });
+    }
+  });
+
+  it('applies the salary limit to updates', async () => {
+    const { service, id } = await withEmployee();
+    const error = await appErrorFrom(service.update(id, { salaryMinor: 50_000_000_000 }));
+    expect(error.details).toMatchObject({ fieldErrors: { salaryMinor: [expect.any(String)] } });
+  });
+
+  it('rejects an email that belongs to another employee, but allows re-casing its own', async () => {
+    const { service, repository, id } = await withEmployee();
+    repository.seed({ email: 'taken@acme.test' });
+    const error = await appErrorFrom(service.update(id, { email: 'taken@acme.test' }));
+    expect(error.code).toBe('CONFLICT');
+    await expect(service.update(id, { email: 'asha.rao@acme.test' })).resolves.toBeDefined();
+  });
+
+  it('rejects an unknown job title', async () => {
+    const { service, id } = await withEmployee();
+    const error = await appErrorFrom(service.update(id, { jobTitleId: 999 }));
+    expect(error.code).toBe('UNPROCESSABLE');
+  });
+
+  it('returns 404 for an unknown employee', async () => {
+    const { service } = setup();
+    const error = await appErrorFrom(service.update(42, { fullName: 'Nobody Here' }));
+    expect(error.code).toBe('NOT_FOUND');
+  });
+});
