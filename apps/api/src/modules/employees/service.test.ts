@@ -327,3 +327,47 @@ describe('employee service: terminated employees are read-only', () => {
     expect(repository.employees[0]?.fullName).toBe('Seeded Person');
   });
 });
+
+describe('employee service: terminate', () => {
+  it('sets the status and termination date and keeps the record', async () => {
+    const { service, repository } = setup();
+    const { id } = await service.create(newHire);
+    const terminated = await service.terminate(id, { terminatedOn: '2026-09-30' });
+    expect(terminated).toMatchObject({ status: 'terminated', terminatedOn: '2026-09-30' });
+    expect(repository.employees).toHaveLength(1);
+  });
+
+  it('accepts termination on the hire date and on today', async () => {
+    const { service } = setup();
+    const first = await service.create(newHire);
+    const second = await service.create({ ...newHire, email: 'second@acme.test' });
+    await expect(
+      service.terminate(first.id, { terminatedOn: '2024-04-01' }),
+    ).resolves.toBeDefined();
+    await expect(service.terminate(second.id, { terminatedOn: TODAY })).resolves.toBeDefined();
+  });
+
+  it('rejects a termination date before the hire date or in the future', async () => {
+    const { service } = setup();
+    const { id } = await service.create(newHire);
+    for (const terminatedOn of ['2024-03-31', '2026-10-14']) {
+      const error = await appErrorFrom(service.terminate(id, { terminatedOn }));
+      expect(error.code).toBe('UNPROCESSABLE');
+      expect(error.details).toMatchObject({ fieldErrors: { terminatedOn: [expect.any(String)] } });
+    }
+  });
+
+  it('rejects terminating an already terminated employee with 409', async () => {
+    const { service } = setup();
+    const { id } = await service.create(newHire);
+    await service.terminate(id, { terminatedOn: '2026-09-30' });
+    const error = await appErrorFrom(service.terminate(id, { terminatedOn: '2026-10-01' }));
+    expect(error.code).toBe('CONFLICT');
+  });
+
+  it('returns 404 for an unknown employee', async () => {
+    const { service } = setup();
+    const error = await appErrorFrom(service.terminate(7, { terminatedOn: TODAY }));
+    expect(error.code).toBe('NOT_FOUND');
+  });
+});
