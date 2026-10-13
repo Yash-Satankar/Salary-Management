@@ -10,6 +10,7 @@ import {
   createEmployeeTransaction,
 } from './modules/employees/repository';
 import { createEmployeeService } from './modules/employees/service';
+import { createInsightsRepository } from './modules/insights/repository';
 import { createReferenceRepository } from './modules/reference/repository';
 
 const env = loadEnv();
@@ -38,6 +39,7 @@ const app = createApp({
     clock,
     transaction: createEmployeeTransaction(db),
   }),
+  insightsRepository: createInsightsRepository(db),
 });
 
 const server = app.listen(env.PORT, () => {

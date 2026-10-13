@@ -4,6 +4,7 @@ import type { AuthService } from '../../modules/auth/service';
 import { fixedClock } from '../../lib/clock';
 import { createEmployeeService } from '../../modules/employees/service';
 import { InMemoryEmployeeRepository } from '../fakes/employees';
+import { emptyInsightsRepository } from '../fakes/insights';
 import { fakeReferenceRepository } from '../fakes/reference';
 
 export const TEST_ORIGIN = 'http://localhost:3000';
@@ -38,6 +39,7 @@ export function testDeps(overrides: Partial<AppDeps> = {}): AppDeps {
       clock: fixedClock('2026-10-13T09:00:00Z'),
       transaction: employeeRepository.transaction,
     }),
+    insightsRepository: emptyInsightsRepository(),
     ...overrides,
   };
 }
