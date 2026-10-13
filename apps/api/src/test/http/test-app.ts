@@ -1,6 +1,9 @@
 import { pino } from 'pino';
 import { type AppDeps, createApp } from '../../app';
 import type { AuthService } from '../../modules/auth/service';
+import { fixedClock } from '../../lib/clock';
+import { createEmployeeService } from '../../modules/employees/service';
+import { InMemoryEmployeeRepository } from '../fakes/employees';
 import { fakeReferenceRepository } from '../fakes/reference';
 
 export const TEST_ORIGIN = 'http://localhost:3000';
@@ -21,6 +24,7 @@ export function fakeAuthService(): AuthService {
 }
 
 export function testDeps(overrides: Partial<AppDeps> = {}): AppDeps {
+  const employeeRepository = new InMemoryEmployeeRepository();
   return {
     config: { allowedOrigins: [TEST_ORIGIN], isProduction: false },
     logger: pino({ level: 'silent' }),
@@ -28,6 +32,12 @@ export function testDeps(overrides: Partial<AppDeps> = {}): AppDeps {
     checkDatabase: async () => undefined,
     loginRateLimit: { windowMs: 60_000, limit: 5 },
     referenceRepository: fakeReferenceRepository(),
+    employeeService: createEmployeeService({
+      employeeRepository,
+      referenceRepository: fakeReferenceRepository(),
+      clock: fixedClock('2026-10-13T09:00:00Z'),
+      transaction: employeeRepository.transaction,
+    }),
     ...overrides,
   };
 }
