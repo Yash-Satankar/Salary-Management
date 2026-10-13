@@ -9,6 +9,8 @@ import { createAuthController } from './modules/auth/controller';
 import { type LoginRateLimit, protectedAuthRoutes, publicAuthRoutes } from './modules/auth/routes';
 import type { AuthService } from './modules/auth/service';
 import { healthRoutes } from './modules/health/routes';
+import type { ReferenceRepository } from './modules/reference/repository';
+import { referenceRoutes } from './modules/reference/routes';
 
 export interface AppConfig {
   allowedOrigins: string[];
@@ -21,6 +23,7 @@ export interface AppDeps {
   authService: AuthService;
   checkDatabase: () => Promise<void>;
   loginRateLimit: LoginRateLimit;
+  referenceRepository: ReferenceRepository;
 }
 
 /** Pure wiring: no listen(), no env access, so tests can build the app with fakes. */
@@ -42,6 +45,7 @@ export function createApp(deps: AppDeps): Express {
   // Everything below requires a session, including unknown routes (401 before 404).
   api.use(requireSession(deps.authService));
   api.use(protectedAuthRoutes(authController));
+  api.use(referenceRoutes(deps.referenceRepository));
   api.use(notFoundHandler);
   app.use('/api/v1', api);
 

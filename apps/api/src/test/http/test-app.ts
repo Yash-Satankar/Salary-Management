@@ -1,6 +1,7 @@
 import { pino } from 'pino';
 import { type AppDeps, createApp } from '../../app';
 import type { AuthService } from '../../modules/auth/service';
+import { fakeReferenceRepository } from '../fakes/reference';
 
 export const TEST_ORIGIN = 'http://localhost:3000';
 export const VALID_CREDENTIALS = { email: 'hr@acme.test', password: 'correct-password' };
@@ -26,6 +27,7 @@ export function testDeps(overrides: Partial<AppDeps> = {}): AppDeps {
     authService: fakeAuthService(),
     checkDatabase: async () => undefined,
     loginRateLimit: { windowMs: 60_000, limit: 5 },
+    referenceRepository: fakeReferenceRepository(),
     ...overrides,
   };
 }

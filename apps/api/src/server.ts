@@ -5,6 +5,7 @@ import { createDatabase } from './db/client';
 import { systemClock } from './lib/clock';
 import { createLogger } from './lib/logger';
 import { createAuthService } from './modules/auth/service';
+import { createReferenceRepository } from './modules/reference/repository';
 
 const env = loadEnv();
 const logger = createLogger(env.LOG_LEVEL);
@@ -24,6 +25,7 @@ const app = createApp({
     await sql`SELECT 1`.execute(db);
   },
   loginRateLimit: { windowMs: 60_000, limit: 5 },
+  referenceRepository: createReferenceRepository(db),
 });
 
 const server = app.listen(env.PORT, () => {
