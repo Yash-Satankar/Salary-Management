@@ -2,6 +2,8 @@ import { pino } from 'pino';
 import { type AppDeps, createApp } from '../../app';
 import type { AuthService } from '../../modules/auth/service';
 import { fixedClock } from '../../lib/clock';
+import { createEmployeeExporter } from '../../modules/csv/export';
+import { createImportService } from '../../modules/csv/import-service';
 import { createEmployeeService } from '../../modules/employees/service';
 import { InMemoryEmployeeRepository } from '../fakes/employees';
 import { emptyInsightsRepository } from '../fakes/insights';
@@ -26,20 +28,29 @@ export function fakeAuthService(): AuthService {
 
 export function testDeps(overrides: Partial<AppDeps> = {}): AppDeps {
   const employeeRepository = new InMemoryEmployeeRepository();
+  const referenceRepository = fakeReferenceRepository();
+  const clock = fixedClock('2026-10-13T09:00:00Z');
   return {
     config: { allowedOrigins: [TEST_ORIGIN], isProduction: false },
     logger: pino({ level: 'silent' }),
     authService: fakeAuthService(),
     checkDatabase: async () => undefined,
     loginRateLimit: { windowMs: 60_000, limit: 5 },
-    referenceRepository: fakeReferenceRepository(),
+    referenceRepository,
     employeeService: createEmployeeService({
       employeeRepository,
-      referenceRepository: fakeReferenceRepository(),
-      clock: fixedClock('2026-10-13T09:00:00Z'),
+      referenceRepository,
+      clock,
       transaction: employeeRepository.transaction,
     }),
     insightsRepository: emptyInsightsRepository(),
+    importService: createImportService({
+      employeeRepository,
+      referenceRepository,
+      clock,
+      transaction: employeeRepository.transaction,
+    }),
+    employeeExporter: createEmployeeExporter({ employeeRepository, referenceRepository, clock }),
     ...overrides,
   };
 }

@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
+import { MulterError } from 'multer';
 import type { Logger } from 'pino';
 import { z } from 'zod';
 import { AppError, internalError, notFound, payloadTooLarge, validationError } from '../lib/errors';
@@ -23,6 +24,11 @@ export function createErrorHandler(logger: Logger): ErrorRequestHandler {
 function toAppError(error: unknown): AppError {
   if (error instanceof AppError) {
     return error;
+  }
+  if (error instanceof MulterError) {
+    return error.code === 'LIMIT_FILE_SIZE'
+      ? payloadTooLarge('The file is larger than 5 MB')
+      : validationError(undefined, `Upload rejected: ${error.message}`);
   }
   if (error instanceof z.ZodError) {
     return validationError(z.flattenError(error));

@@ -6,6 +6,9 @@ import { requireSession } from './middleware/auth';
 import { createErrorHandler, notFoundHandler } from './middleware/error-handler';
 import { originCheck } from './middleware/origin-check';
 import { createAuthController } from './modules/auth/controller';
+import type { EmployeeExporter } from './modules/csv/export';
+import type { ImportService } from './modules/csv/import-service';
+import { CSV_IMPORT_PATH, csvRoutes } from './modules/csv/routes';
 import { type LoginRateLimit, protectedAuthRoutes, publicAuthRoutes } from './modules/auth/routes';
 import type { AuthService } from './modules/auth/service';
 import { employeeRoutes } from './modules/employees/routes';
@@ -30,6 +33,8 @@ export interface AppDeps {
   referenceRepository: ReferenceRepository;
   employeeService: EmployeeService;
   insightsRepository: InsightsRepository;
+  importService: ImportService;
+  employeeExporter: EmployeeExporter;
 }
 
 /** Pure wiring: no listen(), no env access, so tests can build the app with fakes. */
@@ -45,13 +50,17 @@ export function createApp(deps: AppDeps): Express {
   const authController = createAuthController(deps.authService, deps.config.isProduction);
 
   const api = express.Router();
-  api.use(originCheck({ allowedOrigins: deps.config.allowedOrigins }));
+  api.use(
+    originCheck({ allowedOrigins: deps.config.allowedOrigins, multipartPaths: [CSV_IMPORT_PATH] }),
+  );
   api.use(healthRoutes(deps.checkDatabase));
   api.use(publicAuthRoutes(authController, deps.loginRateLimit));
   // Everything below requires a session, including unknown routes (401 before 404).
   api.use(requireSession(deps.authService));
   api.use(protectedAuthRoutes(authController));
   api.use(referenceRoutes(deps.referenceRepository));
+  // CSV routes first: /employees/export.csv must not be captured by /employees/:id.
+  api.use(csvRoutes(deps.importService, deps.employeeExporter));
   api.use(employeeRoutes(deps.employeeService));
   api.use(insightsRoutes(deps.insightsRepository, deps.referenceRepository));
   api.use(notFoundHandler);

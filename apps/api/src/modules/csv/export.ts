@@ -1,6 +1,9 @@
-import { type EmployeeListItem, toMajorString } from '@acme/shared';
+import { type EmployeeListItem, type EmployeeListQuery, toMajorString } from '@acme/shared';
 import { stringify } from 'csv-stringify';
 import { pipeline, Readable } from 'node:stream';
+import type { Clock } from '../../lib/clock';
+import type { EmployeeRepository } from '../employees/types';
+import type { ReferenceRepository } from '../reference/repository';
 import { escapeFormula } from './formula-escape';
 
 export const EXPORT_COLUMNS = [
@@ -63,4 +66,33 @@ export function createExportStream(
   const stringifier = stringify({ header: true, columns: [...EXPORT_COLUMNS], bom: true });
   pipeline(Readable.from(records()), stringifier, () => undefined);
   return stringifier;
+}
+
+export interface EmployeeExporter {
+  export(query: EmployeeListQuery): Promise<{ filename: string; stream: Readable }>;
+}
+
+export interface EmployeeExporterDeps {
+  employeeRepository: Pick<EmployeeRepository, 'iterate'>;
+  referenceRepository: Pick<ReferenceRepository, 'getReferenceData'>;
+  clock: Clock;
+}
+
+export function createEmployeeExporter({
+  employeeRepository,
+  referenceRepository,
+  clock,
+}: EmployeeExporterDeps): EmployeeExporter {
+  return {
+    async export(query) {
+      const { countries } = await referenceRepository.getReferenceData();
+      const minorUnits = Object.fromEntries(
+        countries.map((country) => [country.currency.code, country.currency.minorUnit]),
+      );
+      return {
+        filename: exportFilename(clock.today()),
+        stream: createExportStream(employeeRepository.iterate(query), minorUnits),
+      };
+    },
+  };
 }

@@ -5,6 +5,8 @@ import { createDatabase } from './db/client';
 import { systemClock } from './lib/clock';
 import { createLogger } from './lib/logger';
 import { createAuthService } from './modules/auth/service';
+import { createEmployeeExporter } from './modules/csv/export';
+import { createImportService } from './modules/csv/import-service';
 import {
   createEmployeeRepository,
   createEmployeeTransaction,
@@ -18,6 +20,8 @@ const logger = createLogger(env.LOG_LEVEL);
 const db = createDatabase({ connectionString: env.DATABASE_URL });
 const clock = systemClock;
 const referenceRepository = createReferenceRepository(db);
+const employeeRepository = createEmployeeRepository(db);
+const transaction = createEmployeeTransaction(db);
 
 const app = createApp({
   config: { allowedOrigins: env.ALLOWED_ORIGINS, isProduction: env.NODE_ENV === 'production' },
@@ -34,12 +38,19 @@ const app = createApp({
   loginRateLimit: { windowMs: 60_000, limit: 5 },
   referenceRepository,
   employeeService: createEmployeeService({
-    employeeRepository: createEmployeeRepository(db),
+    employeeRepository,
     referenceRepository,
     clock,
-    transaction: createEmployeeTransaction(db),
+    transaction,
   }),
   insightsRepository: createInsightsRepository(db),
+  importService: createImportService({
+    employeeRepository,
+    referenceRepository,
+    clock,
+    transaction,
+  }),
+  employeeExporter: createEmployeeExporter({ employeeRepository, referenceRepository, clock }),
 });
 
 const server = app.listen(env.PORT, () => {
