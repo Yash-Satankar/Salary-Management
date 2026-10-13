@@ -33,6 +33,8 @@ export function fieldError(field: string, message: string) {
   return unprocessable(message, { formErrors: [], fieldErrors: { [field]: [message] } });
 }
 
+export const INITIAL_SALARY_REASON = 'Initial salary';
+
 const DUPLICATE_EMAIL_MESSAGE = 'An employee with this email already exists';
 
 function duplicateEmail() {
@@ -121,9 +123,22 @@ export function createEmployeeService({
       assertSalaryWithinBounds(input.salaryMinor, country);
       await assertEmailAvailable(input.email);
       const created = await mapDuplicateEmail(
-        transaction((repository) =>
-          repository.insert({ ...input, currencyCode: country.currency.code }),
-        ),
+        transaction(async (repository) => {
+          const employee = await repository.insert({
+            ...input,
+            currencyCode: country.currency.code,
+          });
+          await repository.insertSalaryChange({
+            employeeId: employee.id,
+            previousSalaryMinor: null,
+            previousCurrencyCode: null,
+            newSalaryMinor: employee.salaryMinor,
+            newCurrencyCode: employee.currencyCode,
+            effectiveDate: employee.hireDate,
+            reason: INITIAL_SALARY_REASON,
+          });
+          return employee;
+        }),
       );
       return getDetail(created.id);
     },
