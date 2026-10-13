@@ -3,7 +3,7 @@
 Resume rule: read this file and `git log --oneline` first, then continue from the first unticked item.
 
 - [x] Step 0 — Inspect tooling, init git, commit requirements + spec
-- [ ] Phase 1 — Monorepo foundation
+- [x] Phase 1 — Monorepo foundation
 - [ ] Phase 2 — `packages/shared` (money utilities, enums, Zod DTO schemas)
 - [ ] Phase 3 — Database (Kysely client, schema types, migrations, integration harness)
 - [ ] Phase 4 — Seed (salary model, deterministic 10k seed, determinism test)
