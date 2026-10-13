@@ -10,6 +10,7 @@ import {
   toUsdMinor,
 } from '@acme/shared';
 import type { Clock } from '../../lib/clock';
+import { addDays } from '../../lib/dates';
 import { conflict, notFound, unprocessable } from '../../lib/errors';
 import type { CountryInfo, JobTitleInfo, ReferenceRepository } from '../reference/repository';
 import {
@@ -36,6 +37,8 @@ export interface EmployeeServiceDeps {
 }
 
 export const MAX_SALARY_USD_MINOR = 5_000_000_00;
+/** Accepted offers can be entered up to this many days before the start date. */
+export const MAX_DAYS_UNTIL_HIRE = 90;
 
 /** Field-level domain error in the same shape as Zod's flattened errors, so forms can map it. */
 export function fieldError(field: string, message: string) {
@@ -116,6 +119,15 @@ export function createEmployeeService({
     }
   }
 
+  function assertHireDateAllowed(hireDate: string): void {
+    if (hireDate > addDays(clock.today(), MAX_DAYS_UNTIL_HIRE)) {
+      throw fieldError(
+        'hireDate',
+        `Hire date cannot be more than ${MAX_DAYS_UNTIL_HIRE} days ahead`,
+      );
+    }
+  }
+
   /** Salary changes cannot predate the employment or be scheduled for the future in v1. */
   function resolveEffectiveDate(requested: string | undefined, hireDate: string): string {
     const effectiveDate = requested ?? clock.today();
@@ -159,6 +171,7 @@ export function createEmployeeService({
     async create(input) {
       const country = await requireCountry(input.countryCode);
       await requireJobTitle(input.jobTitleId);
+      assertHireDateAllowed(input.hireDate);
       assertSalaryWithinBounds(input.salaryMinor, country);
       await assertEmailAvailable(input.email);
       const created = await mapDuplicateEmail(
@@ -187,6 +200,9 @@ export function createEmployeeService({
       const { salaryChange, ...changes } = input;
       if (changes.jobTitleId !== undefined) {
         await requireJobTitle(changes.jobTitleId);
+      }
+      if (changes.hireDate !== undefined) {
+        assertHireDateAllowed(changes.hireDate);
       }
       const country = await requireCountry(changes.countryCode ?? existing.countryCode);
       // A new country means a new currency, so the old amount would silently change meaning.
