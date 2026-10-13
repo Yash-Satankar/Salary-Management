@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { InvalidAmountError, toMinor } from './money';
+import { InvalidAmountError, toMajorString, toMinor } from './money';
 
 describe('toMinor', () => {
   it('converts a two-decimal amount to minor units exactly', () => {
@@ -50,5 +50,43 @@ describe('toMinor', () => {
 
   it('rejects amounts beyond the safe integer range', () => {
     expect(() => toMinor('90071992547409.93', 2)).toThrow(/too large/);
+  });
+});
+
+describe('toMajorString', () => {
+  it('renders minor units with the currency decimals', () => {
+    expect(toMajorString(125000050, 2)).toBe('1250000.50');
+  });
+
+  it('keeps trailing zeros so the value round-trips through CSV', () => {
+    expect(toMajorString(4200, 2)).toBe('42.00');
+  });
+
+  it('pads amounts smaller than one major unit', () => {
+    expect(toMajorString(5, 2)).toBe('0.05');
+    expect(toMajorString(0, 2)).toBe('0.00');
+  });
+
+  it('renders JPY without a decimal point', () => {
+    expect(toMajorString(8500000, 0)).toBe('8500000');
+  });
+
+  it('renders negative differences with a leading minus sign', () => {
+    expect(toMajorString(-1050, 2)).toBe('-10.50');
+  });
+
+  it('round-trips with toMinor', () => {
+    for (const [amount, unit] of [
+      [1, 2],
+      [999999999, 2],
+      [8500000, 0],
+      [1005, 3],
+    ] as const) {
+      expect(toMinor(toMajorString(amount, unit), unit)).toBe(amount);
+    }
+  });
+
+  it('rejects non-integer minor amounts', () => {
+    expect(() => toMajorString(10.5, 2)).toThrow(InvalidAmountError);
   });
 });
