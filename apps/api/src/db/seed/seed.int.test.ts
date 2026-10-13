@@ -35,17 +35,17 @@ describe('seedDatabase', () => {
     const stats = await testDb.db
       .selectFrom('employees')
       .select((eb) => [
-        eb.fn.countAll<string>().as('employees'),
-        eb.fn.count<string>('country_code').distinct().as('countries'),
+        eb.fn.countAll<number>().as('employees'),
+        eb.fn.count<number>('country_code').distinct().as('countries'),
         eb.fn.min('employee_code').as('firstCode'),
       ])
       .executeTakeFirstOrThrow();
-    expect(stats).toEqual({ employees: '10000', countries: '8', firstCode: 'EMP-000001' });
+    expect(stats).toEqual({ employees: 10_000, countries: 8, firstCode: 'EMP-000001' });
   }, 60_000);
 
   it('ends every salary history at the employee current salary', async () => {
     await seedDatabase(testDb.db);
-    const mismatches = await sql<{ count: string }>`
+    const mismatches = await sql<{ count: number }>`
       SELECT count(*) AS count
       FROM employees e
       JOIN LATERAL (
@@ -54,6 +54,6 @@ describe('seedDatabase', () => {
       ) latest ON true
       WHERE latest.new_salary_minor <> e.salary_minor OR latest.new_currency_code <> e.currency_code
     `.execute(testDb.db);
-    expect(mismatches.rows[0]?.count).toBe('0');
+    expect(mismatches.rows[0]?.count).toBe(0);
   }, 60_000);
 });
