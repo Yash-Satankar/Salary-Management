@@ -2,7 +2,10 @@ import { z } from 'zod';
 
 const originSchema = z
   .url()
-  .refine((value) => new URL(value).origin === value.replace(/\/$/, ''), 'Must be a bare origin');
+  .refine(
+    (value) => URL.canParse(value) && new URL(value).origin === value,
+    'Must be a bare origin such as https://app.example.com',
+  );
 
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
