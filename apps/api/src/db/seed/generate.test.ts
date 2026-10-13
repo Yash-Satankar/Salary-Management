@@ -79,15 +79,15 @@ describe('generateSeedData', () => {
     expect(terminated.length).toBeGreaterThan(200);
     expect(terminated.length).toBeLessThan(400);
     for (const employee of terminated) {
-      expect(employee.terminatedOn! >= employee.hireDate).toBe(true);
-      expect(employee.terminatedOn! <= options.referenceDate).toBe(true);
+      expect(String(employee.terminatedOn) >= employee.hireDate).toBe(true);
+      expect(String(employee.terminatedOn) <= options.referenceDate).toBe(true);
     }
   });
 
   it('hires everyone within the 12 years before the reference date', () => {
     const hireDates = data.map((employee) => employee.hireDate).sort();
-    expect(hireDates[0]! >= '2014-10-01').toBe(true);
-    expect(hireDates.at(-1)! <= options.referenceDate).toBe(true);
+    expect(String(hireDates[0]) >= '2014-10-01').toBe(true);
+    expect(String(hireDates.at(-1)) <= options.referenceDate).toBe(true);
   });
 
   it('gives every employee an initial history row plus 0–3 chronological changes ending at the current salary', () => {
@@ -98,12 +98,11 @@ describe('generateSeedData', () => {
       expect(initial?.effectiveDate).toBe(employee.hireDate);
       changeCounts.add(changes.length);
       expect(changes.length).toBeLessThanOrEqual(3);
-      for (let index = 1; index < employee.history.length; index += 1) {
-        const previous = employee.history[index - 1]!;
-        const current = employee.history[index]!;
-        expect(current.previousSalaryMinor).toBe(previous.newSalaryMinor);
-        expect(current.effectiveDate > previous.effectiveDate).toBe(true);
-      }
+      changes.forEach((current, index) => {
+        const previous = employee.history[index];
+        expect(current.previousSalaryMinor).toBe(previous?.newSalaryMinor);
+        expect(current.effectiveDate > String(previous?.effectiveDate)).toBe(true);
+      });
       expect(employee.history.at(-1)?.newSalaryMinor).toBe(employee.salaryMinor);
       expect(employee.history.every((entry) => entry.newSalaryMinor > 0)).toBe(true);
     }
