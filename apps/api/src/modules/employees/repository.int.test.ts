@@ -360,3 +360,26 @@ describe('employee repository: list', () => {
     expect(beyond).toEqual({ items: [], total: 4 });
   });
 });
+
+describe('employee repository: bulk lookups and iteration', () => {
+  it('finds employees by codes and by emails, case-insensitively', async () => {
+    await insertFixture();
+    const byCode = await repository().findByCodes(['EMP-000002', 'EMP-000004', 'EMP-999999']);
+    expect(byCode.map((employee) => employee.fullName).sort()).toEqual([
+      'Ben Carter',
+      'Dana Smith',
+    ]);
+    const byEmail = await repository().findByEmails(['ASHA.RAO@acme.test', 'nobody@acme.test']);
+    expect(byEmail.map((employee) => employee.employeeCode)).toEqual(['EMP-000001']);
+    await expect(repository().findByCodes([])).resolves.toEqual([]);
+  });
+
+  it('iterates every matching employee in sort order, page by page', async () => {
+    await insertFixture();
+    const seen: string[] = [];
+    for await (const item of repository().iterate(query({ status: 'all', sort: 'hireDate' }), 2)) {
+      seen.push(item.fullName);
+    }
+    expect(seen).toEqual(['Erik Weber', 'Ben Carter', 'Dana Smith', 'Asha Rao', 'Chika Tanaka']);
+  });
+});
