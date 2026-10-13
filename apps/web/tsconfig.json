@@ -5,8 +5,12 @@
     "jsx": "react-jsx",
     "allowJs": false,
     "incremental": true,
-    "types": ["node"],
-    "plugins": [{ "name": "next" }],
+    "types": ["node", "@testing-library/jest-dom/vitest"],
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
     "paths": {
       "@/*": ["./src/*"]
     }
