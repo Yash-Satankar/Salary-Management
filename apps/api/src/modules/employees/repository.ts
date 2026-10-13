@@ -94,6 +94,8 @@ function toRow(changes: EmployeeChanges) {
   };
 }
 
+const EXPORT_PAGE_SIZE = 1_000;
+
 export function createEmployeeRepository(db: Db): EmployeeRepository {
   const joined = () =>
     db
@@ -267,6 +269,45 @@ export function createEmployeeRepository(db: Db): EmployeeRepository {
           .executeTakeFirstOrThrow(),
       ]);
       return { items: rows.map(toListItem), total: count.total };
+    },
+
+    async findByCodes(codes) {
+      if (codes.length === 0) {
+        return [];
+      }
+      return db
+        .selectFrom('employees')
+        .select(RECORD_COLUMNS)
+        .where('employee_code', 'in', codes)
+        .execute();
+    },
+
+    async findByEmails(emails) {
+      if (emails.length === 0) {
+        return [];
+      }
+      const lowered = emails.map((email) => email.toLowerCase());
+      return db
+        .selectFrom('employees')
+        .select(RECORD_COLUMNS)
+        .where((eb) => eb(eb.fn('lower', ['email']), 'in', lowered))
+        .execute();
+    },
+
+    async *iterate(query, pageSize = EXPORT_PAGE_SIZE) {
+      for (let page = 1; ; page += 1) {
+        const rows = await filtered(query)
+          .select(LIST_COLUMNS)
+          .orderBy(SORT_EXPRESSIONS[query.sort], query.order)
+          .orderBy('e.id', query.order)
+          .limit(pageSize)
+          .offset((page - 1) * pageSize)
+          .execute();
+        yield* rows.map(toListItem);
+        if (rows.length < pageSize) {
+          return;
+        }
+      }
     },
   };
 }

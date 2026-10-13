@@ -139,6 +139,23 @@ export class InMemoryEmployeeRepository implements EmployeeRepository {
     };
   }
 
+  async findByCodes(codes: string[]) {
+    return this.state.employees
+      .filter((employee) => codes.includes(employee.employeeCode))
+      .map((employee) => ({ ...employee }));
+  }
+
+  async findByEmails(emails: string[]) {
+    const lowered = new Set(emails.map((email) => email.toLowerCase()));
+    return this.state.employees
+      .filter((employee) => lowered.has(employee.email.toLowerCase()))
+      .map((employee) => ({ ...employee }));
+  }
+
+  async *iterate() {
+    yield* (await this.list()).items;
+  }
+
   async list() {
     const items = await Promise.all(
       this.state.employees.map((employee) => this.toListItem(employee)),

@@ -58,6 +58,11 @@ export interface EmployeeRepository {
   insertSalaryChange(change: NewSalaryChange): Promise<void>;
   getDetail(id: number): Promise<EmployeeDetail | undefined>;
   list(query: EmployeeListQuery): Promise<EmployeeListPage>;
+  findByCodes(codes: string[]): Promise<EmployeeRecord[]>;
+  /** Case-insensitive lookup. */
+  findByEmails(emails: string[]): Promise<EmployeeRecord[]>;
+  /** Every employee matching the filters, fetched page by page so memory stays bounded. */
+  iterate(query: EmployeeListQuery, pageSize?: number): AsyncIterable<EmployeeListItem>;
 }
 
 /** Runs `work` atomically; the repository it receives is bound to the transaction. */
