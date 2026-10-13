@@ -270,3 +270,45 @@ describe('employee service: update and salary history', () => {
     expect(error.code).toBe('NOT_FOUND');
   });
 });
+
+describe('employee service: country changes', () => {
+  async function withIndianEmployee() {
+    const context = setup();
+    const created = await context.service.create(newHire);
+    return { ...context, id: created.id };
+  }
+
+  it('rejects a country change without a new salary', async () => {
+    const { service, repository, id } = await withIndianEmployee();
+    const error = await appErrorFrom(service.update(id, { countryCode: 'JP' }));
+    expect(error.code).toBe('UNPROCESSABLE');
+    expect(error.status).toBe(422);
+    expect(error.details).toEqual({
+      formErrors: [],
+      fieldErrors: {
+        salaryMinor: ['Changing the country changes the currency: enter the salary in JPY'],
+      },
+    });
+    expect(repository.employees[0]?.countryCode).toBe('IN');
+  });
+
+  it('switches currency and records the cross-currency change in history', async () => {
+    const { service, repository, id } = await withIndianEmployee();
+    const updated = await service.update(id, { countryCode: 'JP', salaryMinor: 4_500_000 });
+    expect(updated.country).toEqual({ code: 'JP', name: 'Japan' });
+    expect(updated.salary).toEqual({ amountMinor: 4_500_000, currency: 'JPY' });
+    expect(repository.salaryChanges.at(-1)).toMatchObject({
+      previousSalaryMinor: 250_000_000,
+      previousCurrencyCode: 'INR',
+      newSalaryMinor: 4_500_000,
+      newCurrencyCode: 'JPY',
+    });
+  });
+
+  it('treats re-sending the current country as no country change', async () => {
+    const { service, id } = await withIndianEmployee();
+    await expect(
+      service.update(id, { countryCode: 'IN', fullName: 'Asha Rao' }),
+    ).resolves.toMatchObject({ country: { code: 'IN' } });
+  });
+});
