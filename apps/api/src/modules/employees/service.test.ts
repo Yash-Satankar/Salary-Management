@@ -312,3 +312,18 @@ describe('employee service: country changes', () => {
     ).resolves.toMatchObject({ country: { code: 'IN' } });
   });
 });
+
+describe('employee service: terminated employees are read-only', () => {
+  it('rejects edits to a terminated employee with 409', async () => {
+    const { service, repository } = setup();
+    const terminated = repository.seed({
+      email: 'gone@acme.test',
+      status: 'terminated',
+      terminatedOn: '2025-12-31',
+    });
+    const error = await appErrorFrom(service.update(terminated.id, { fullName: 'New Name' }));
+    expect(error.code).toBe('CONFLICT');
+    expect(error.message).toBe('Terminated employees cannot be edited');
+    expect(repository.employees[0]?.fullName).toBe('Seeded Person');
+  });
+});
