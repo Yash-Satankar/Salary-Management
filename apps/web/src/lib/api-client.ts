@@ -114,6 +114,8 @@ export function fieldErrorsOf(error: unknown): Record<string, string[]> {
 
 export function redirectToLogin(): void {
   const next = `${window.location.pathname}${window.location.search}`;
+  // A full navigation (not router.push) runs outside React and also drops cached salary data.
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
   window.location.assign(`/login?next=${encodeURIComponent(next)}`);
 }
 
