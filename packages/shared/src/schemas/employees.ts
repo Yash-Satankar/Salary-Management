@@ -1,6 +1,22 @@
 import { z } from 'zod';
-import { EMPLOYEE_SORT_FIELDS, EMPLOYMENT_TYPES, SORT_ORDERS, STATUS_FILTERS } from '../enums';
-import { countryCodeSchema, emailSchema, isoDateSchema, optionalQueryParam } from './common';
+import {
+  EMPLOYEE_SORT_FIELDS,
+  EMPLOYEE_STATUSES,
+  EMPLOYMENT_TYPES,
+  SORT_ORDERS,
+  STATUS_FILTERS,
+} from '../enums';
+import {
+  countryCodeSchema,
+  countryRefSchema,
+  emailSchema,
+  fxMetaSchema,
+  fxOnlyMetaSchema,
+  isoDateSchema,
+  moneySchema,
+  namedRefSchema,
+  optionalQueryParam,
+} from './common';
 
 const idSchema = z.number().int().positive();
 
@@ -47,3 +63,58 @@ export const employeeListQuerySchema = z.object({
   order: z.enum(SORT_ORDERS).default('asc'),
 });
 export type EmployeeListQuery = z.infer<typeof employeeListQuerySchema>;
+
+export const employeeListItemSchema = z.object({
+  id: idSchema,
+  employeeCode: z.string(),
+  fullName: z.string(),
+  email: z.string(),
+  jobTitle: namedRefSchema,
+  department: namedRefSchema,
+  country: countryRefSchema,
+  salary: moneySchema,
+  salaryUsd: moneySchema,
+  employmentType: z.enum(EMPLOYMENT_TYPES),
+  hireDate: isoDateSchema,
+  status: z.enum(EMPLOYEE_STATUSES),
+  terminatedOn: isoDateSchema.nullable(),
+});
+export type EmployeeListItem = z.infer<typeof employeeListItemSchema>;
+
+export const salaryHistoryEntrySchema = z.object({
+  id: idSchema,
+  previous: moneySchema.nullable(),
+  new: moneySchema,
+  effectiveDate: isoDateSchema,
+  reason: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type SalaryHistoryEntry = z.infer<typeof salaryHistoryEntrySchema>;
+
+export const employeeDetailSchema = employeeListItemSchema.extend({
+  salaryHistory: z.array(salaryHistoryEntrySchema),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type EmployeeDetail = z.infer<typeof employeeDetailSchema>;
+
+export const employeeListMetaSchema = z.object({
+  page: z.number().int(),
+  pageSize: z.number().int(),
+  total: z.number().int(),
+  totalPages: z.number().int(),
+  fx: fxMetaSchema,
+});
+export type EmployeeListMeta = z.infer<typeof employeeListMetaSchema>;
+
+export const employeeListResponseSchema = z.object({
+  data: z.array(employeeListItemSchema),
+  meta: employeeListMetaSchema,
+});
+export type EmployeeListResponse = z.infer<typeof employeeListResponseSchema>;
+
+export const employeeDetailResponseSchema = z.object({
+  data: employeeDetailSchema,
+  meta: fxOnlyMetaSchema,
+});
+export type EmployeeDetailResponse = z.infer<typeof employeeDetailResponseSchema>;

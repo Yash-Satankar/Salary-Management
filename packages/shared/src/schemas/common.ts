@@ -36,3 +36,8 @@ export type ErrorEnvelope = z.infer<typeof errorEnvelopeSchema>;
 export function optionalQueryParam<T extends z.ZodType>(schema: T) {
   return z.preprocess((value) => (value === '' ? undefined : value), schema.optional());
 }
+
+export const namedRefSchema = z.object({ id: z.number().int(), name: z.string() });
+export const countryRefSchema = z.object({ code: countryCodeSchema, name: z.string() });
+
+export const fxOnlyMetaSchema = z.object({ fx: fxMetaSchema });
