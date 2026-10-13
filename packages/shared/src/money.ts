@@ -32,3 +32,19 @@ export function toMinor(major: string, minorUnit: number): number {
   }
   return Number(minor);
 }
+
+/** Renders integer minor units as a plain major-unit string, e.g. 125000050 (2) → "1250000.50". */
+export function toMajorString(minor: number, minorUnit: number): string {
+  if (!Number.isSafeInteger(minor)) {
+    throw new InvalidAmountError(`${minor} is not an integer number of minor units`);
+  }
+  const sign = minor < 0 ? '-' : '';
+  const digits = Math.abs(minor)
+    .toString()
+    .padStart(minorUnit + 1, '0');
+  if (minorUnit === 0) {
+    return sign + digits;
+  }
+  const splitAt = digits.length - minorUnit;
+  return `${sign}${digits.slice(0, splitAt)}.${digits.slice(splitAt)}`;
+}
