@@ -150,3 +150,33 @@ describe('employee service: unique email', () => {
     expect(error.code).toBe('CONFLICT');
   });
 });
+
+describe('employee service: initial salary history', () => {
+  it('writes an initial history row effective from the hire date', async () => {
+    const { service, repository } = setup();
+    const created = await service.create(newHire);
+    expect(repository.salaryChanges).toEqual([
+      {
+        id: 1,
+        employeeId: created.id,
+        previousSalaryMinor: null,
+        previousCurrencyCode: null,
+        newSalaryMinor: 250_000_000,
+        newCurrencyCode: 'INR',
+        effectiveDate: '2024-04-01',
+        reason: 'Initial salary',
+      },
+    ]);
+    expect(created.salaryHistory).toHaveLength(1);
+    expect(created.salaryHistory[0]?.previous).toBeNull();
+  });
+
+  it('creates nothing if the history row cannot be written', async () => {
+    const { service, repository } = setup();
+    repository.insertSalaryChange = async () => {
+      throw new Error('disk full');
+    };
+    await expect(service.create(newHire)).rejects.toThrow('disk full');
+    expect(repository.employees).toHaveLength(0);
+  });
+});
