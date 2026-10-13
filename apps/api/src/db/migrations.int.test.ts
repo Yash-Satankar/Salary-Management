@@ -82,7 +82,7 @@ describe('migrations', () => {
       .select(['job_titles.name as title', 'departments.name as department'])
       .execute();
     expect(departments).toHaveLength(9);
-    expect(titles).toHaveLength(25);
+    expect(titles).toHaveLength(26);
     expect(titles).toContainEqual({ title: 'Staff Engineer', department: 'Engineering' });
     expect(titles).toContainEqual({ title: 'Recruiter', department: 'People' });
   });
