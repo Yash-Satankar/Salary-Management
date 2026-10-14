@@ -124,7 +124,7 @@ describe('InsightsDashboard', () => {
     stubInsights();
     renderDashboard();
     const summary = await screen.findByRole('region', { name: 'Summary' });
-    expect(within(summary).getByText('9,700')).toBeInTheDocument();
+    expect(await within(summary).findByText('9,700')).toBeInTheDocument();
     expect(within(summary).getByText('≈ $81,140,001')).toBeInTheDocument();
     expect(within(summary).getByText('≈ $67,617')).toBeInTheDocument();
     expect(screen.getAllByText(/as of 2026-10-01/).length).toBeGreaterThan(0);
