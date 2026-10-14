@@ -14,7 +14,8 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "db:migrate": "tsx --env-file-if-exists=.env.example --env-file-if-exists=.env src/db/migrate.ts",
     "db:seed": "tsx --env-file-if-exists=.env.example --env-file-if-exists=.env src/db/seed/run.ts",
-    "hash-password": "tsx scripts/hash-password.ts"
+    "hash-password": "tsx scripts/hash-password.ts",
+    "explain": "tsx --env-file-if-exists=.env.example --env-file-if-exists=.env scripts/explain.ts"
   },
   "dependencies": {
     "@acme/shared": "workspace:*",
