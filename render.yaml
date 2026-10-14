@@ -6,9 +6,11 @@ services:
     plan: free
     # NODE_ENV=production makes pnpm skip devDependencies, but the build needs tsup and the
     # TypeScript sources of @acme/shared, hence --prod=false.
-    buildCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm --filter api build
-    # Applies pending migrations, then starts the server.
-    startCommand: pnpm --filter api start
+    # pnpm runs through `corepack pnpm` (version from package.json "packageManager"): `corepack enable`
+    # would write shims into /usr/bin, which is read-only on Render.
+    buildCommand: corepack pnpm install --frozen-lockfile --prod=false && corepack pnpm --filter api build
+    # The start script is plain node: it applies pending migrations, then starts the server.
+    startCommand: cd apps/api && npm run start
     healthCheckPath: /api/v1/health
     autoDeploy: true
     envVars:
@@ -18,6 +20,9 @@ services:
         value: '24'
       - key: LOG_LEVEL
         value: info
+      # Corepack must not wait for an interactive confirmation before fetching pnpm.
+      - key: COREPACK_ENABLE_DOWNLOAD_PROMPT
+        value: '0'
       - key: SESSION_SECRET
         generateValue: true
       # Set these in the Render dashboard (never committed):
