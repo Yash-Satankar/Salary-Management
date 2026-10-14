@@ -19,7 +19,9 @@
     "db:migrate": "pnpm --filter @acme/api db:migrate",
     "db:seed": "pnpm --filter @acme/api db:seed",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "bench": "node scripts/bench.mjs",
+    "db:explain": "pnpm --filter @acme/api explain"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
