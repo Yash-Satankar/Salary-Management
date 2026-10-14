@@ -19,8 +19,46 @@ Zod contract package. Developed test-first; see the commit history.
 
 ## Screenshots
 
-_TODO: add screenshots of the employee list, employee detail with salary history, insights and the
-import preview._
+Captured from the live demo.
+
+**Employees:** server-side sorting and filtering over 10,000 records; local salaries with an
+approximate USD column (here sorted by ≈ USD).
+
+![Employee list sorted by approximate USD salary](docs/screenshots/02-employees.png)
+
+**Employee detail:** current salary and the full salary history with % changes and reasons.
+
+![Employee detail with salary history timeline](docs/screenshots/03-employee-detail.png)
+
+**Editing:** changing the country warns that the currency changes and requires a new salary.
+
+![Edit form showing the country-change warning](docs/screenshots/04-edit-country-change.png)
+
+**Pay insights:** org-wide totals and local-currency statistics per country, with ≈ USD comparisons
+labelled with the FX date.
+
+![Insights summary and pay by country](docs/screenshots/05-insights.png)
+
+<details>
+<summary>More insights: country drill-down and a role compared across countries</summary>
+
+![Salary distribution and pay by job title in India](docs/screenshots/06-insights-drilldown.png)
+
+![Software Engineer pay compared across countries](docs/screenshots/07-insights-role-comparison.png)
+
+</details>
+
+**CSV import:** a dry run reports every problem by row and field; nothing can be applied until the
+file is clean.
+
+![Import preview with row-level errors](docs/screenshots/08-import-preview.png)
+
+<details>
+<summary>Sign-in page</summary>
+
+![Sign-in page](docs/screenshots/01-login.png)
+
+</details>
 
 ## Live demo
 
