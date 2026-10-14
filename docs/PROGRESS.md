@@ -13,7 +13,7 @@ Resume rule: read this file and `git log --oneline` first, then continue from th
 - [x] Phase 8 — CSV export & import
 - [x] Phase 9 — Web foundation
 - [x] Phase 10 — Web: employees
-- [ ] Phase 11 — Web: import/export & insights
+- [x] Phase 11 — Web: import/export & insights
 - [ ] Phase 12 — CI, performance, deployment config
 - [ ] Phase 13 — Documentation & artifacts
 - [ ] Phase 14 — Final verification & publishing
