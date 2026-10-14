@@ -24,12 +24,15 @@ import preview._
 
 ## Live demo
 
-|                   |                                                       |
-| ----------------- | ----------------------------------------------------- |
-| Web app           | TODO: `https://<your-app>.vercel.app`                 |
-| API health        | TODO: `https://<your-api>.onrender.com/api/v1/health` |
-| Walkthrough video | TODO                                                  |
-| Demo credentials  | TODO: email / password for reviewers                  |
+|                   |                                                                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Web app           | <https://acme-salary-rho.vercel.app/>                                                                                     |
+| API (Render)      | <https://acme-salary-api-gufg.onrender.com> · health: <https://acme-salary-api-gufg.onrender.com/api/v1/health>           |
+| Walkthrough video | [Demo video (Google Drive, ~3.5 min)](https://drive.google.com/file/d/1L62yVDN0o_aImEiCjof0Ew48hE8nYpGR/view?usp=sharing) |
+| Demo credentials  | Email `hr@acme.com` · Password `AcmeReview-2026`                                                                          |
+
+The browser only talks to the Vercel app, which proxies `/api/*` to the Render API; the API URL is
+listed for reference (all routes except health require signing in).
 
 The demo runs on free tiers; the first request after a period of inactivity can take 30–60 seconds
 while the API wakes up ([details](docs/DEPLOYMENT.md#notes-for-reviewers)).
