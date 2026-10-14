@@ -1,0 +1,31 @@
+# Render Blueprint for the API. The database is Neon and the web app is Vercel; see docs/DEPLOYMENT.md.
+services:
+  - type: web
+    name: acme-salary-api
+    runtime: node
+    plan: free
+    # NODE_ENV=production makes pnpm skip devDependencies, but the build needs tsup and the
+    # TypeScript sources of @acme/shared, hence --prod=false.
+    buildCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm --filter api build
+    # Applies pending migrations, then starts the server.
+    startCommand: pnpm --filter api start
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: '24'
+      - key: LOG_LEVEL
+        value: info
+      - key: SESSION_SECRET
+        generateValue: true
+      # Set these in the Render dashboard (never committed):
+      - key: DATABASE_URL # Neon pooled connection string with ?sslmode=require
+        sync: false
+      - key: HR_EMAIL
+        sync: false
+      - key: HR_PASSWORD_HASH # pnpm --filter api hash-password '<password>'
+        sync: false
+      - key: ALLOWED_ORIGINS # the Vercel URL, e.g. https://acme-salary.vercel.app
+        sync: false
