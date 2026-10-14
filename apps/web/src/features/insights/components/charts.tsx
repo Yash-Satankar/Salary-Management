@@ -63,7 +63,11 @@ export function AverageMedianChart({ data, title }: { data: AverageMedianDatum[]
               contentStyle={TOOLTIP_STYLE}
               formatter={(value) => `≈ ${wholeUsd.format(Number(value))}`}
             />
-            <Legend wrapperStyle={{ fontSize: 12 }} />
+            {/* Legend text stays in the text colour; only the swatch carries the series colour. */}
+            <Legend
+              wrapperStyle={{ fontSize: 12 }}
+              formatter={(value) => <span className="text-foreground">{value}</span>}
+            />
             <Bar
               dataKey="average"
               name="Average"
