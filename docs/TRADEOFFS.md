@@ -3,6 +3,21 @@
 This file records (1) the key trade-offs behind the design and (2) every place where the build
 deviates from, or fills a gap in, `docs/SPEC.md`. The SPEC itself is never edited.
 
+## Key trade-offs
+
+| We chose                                                  | Over                                   | Gain                                                                              | Cost                                                                             |
+| --------------------------------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Integer minor units + currency exponent table             | Floats or NUMERIC everywhere           | Exact money, JPY handled by data, not special cases                               | Every boundary (form, CSV, API) must know the exponent                           |
+| Currency derived from country, composite FK               | Free currency field                    | Mismatched pairs impossible, even via SQL or import                               | One currency per country; multi-currency countries need a new model              |
+| Static, dated FX table                                    | Live rates                             | Reproducible numbers, no external dependency, exact test assertions               | Rates go stale; the `as_of` date is shown everywhere to make that visible        |
+| Live SQL aggregates (one statement per insight)           | Materialized views or caching          | Always-current, exact figures; no invalidation bugs                               | Cost grows with data; pre-aggregation needed around 1M rows                      |
+| Offset pagination                                         | Keyset pagination                      | Page jumps, "page X of Y", simple shareable URLs                                  | Deep pages slow down at large scale                                              |
+| All-or-nothing import with dry run                        | Best-effort import                     | A bad file never half-applies; errors reported per row and field                  | One bad row blocks the whole file until fixed                                    |
+| Single HR account from env                                | User table with roles                  | Small, auditable auth surface for the one defined persona                         | Adding users means replacing the auth service (middleware stays)                 |
+| JWT in httpOnly cookie behind a same-origin proxy         | Bearer tokens or cross-origin cookies  | No token in JS, no third-party-cookie problems, no CORS                           | An extra hop through Next.js; tokens cannot be revoked early (rotate the secret) |
+| Hand-written fakes for unit tests, Testcontainers for SQL | Mocking libraries, in-memory databases | Outcome-based tests; real Postgres semantics for medians, buckets and constraints | Fakes must be kept faithful; integration runs need Docker                        |
+| Soft termination                                          | Hard delete                            | History and audit preserved; insights reflect current staff                       | Leavers' personal data is retained (needs a retention policy)                    |
+
 ## Deviations and gap-filling decisions made during the build
 
 | #   | Topic                                   | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Why                                                                                                                                                                                                                                                                 |
