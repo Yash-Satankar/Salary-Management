@@ -163,12 +163,16 @@ export function createInsightsRepository(db: Db): InsightsRepository {
           JOIN departments d ON d.id = jt.department_id
           GROUP BY jt.id, jt.name, d.id, d.name
         ),
-        bucketed AS (
+        -- Counted once with GROUP BY: a per-bucket correlated count inflated the plan cost enough
+        -- to trigger JIT compilation, which cost more than the query itself.
+        bucket_counts AS (
           SELECT CASE WHEN s.max = s.min THEN 1
                       ELSE LEAST(width_bucket(${SALARY}::numeric, s.min::numeric, s.max::numeric,
                                               ${DISTRIBUTION_BUCKETS}), ${DISTRIBUTION_BUCKETS})
-                 END AS bucket
+                 END AS bucket,
+                 count(*) AS count
           FROM emp CROSS JOIN stats s
+          GROUP BY 1
         ),
         buckets AS (
           SELECT b.i,
@@ -178,9 +182,10 @@ export function createInsightsRepository(db: Db): InsightsRepository {
                  CASE WHEN s.max = s.min OR b.i = ${DISTRIBUTION_BUCKETS} THEN s.max
                       ELSE s.min + round(b.i * (s.max - s.min)::numeric / ${DISTRIBUTION_BUCKETS})::bigint
                  END AS "toMinor",
-                 (SELECT count(*) FROM bucketed WHERE bucketed.bucket = b.i) AS count
+                 COALESCE(bucket_counts.count, 0) AS count
           FROM stats s
           CROSS JOIN generate_series(1, CASE WHEN s.max = s.min THEN 1 ELSE ${DISTRIBUTION_BUCKETS} END) AS b(i)
+          LEFT JOIN bucket_counts ON bucket_counts.bucket = b.i
           WHERE s.headcount > 0
         )
         SELECT country.code, country.name, country.currency_code AS currency,
